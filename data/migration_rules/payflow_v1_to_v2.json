@@ -1,0 +1,99 @@
+[
+  {
+    "id": "PF-001",
+    "name": "Payment Method Invocation Migration",
+    "category": "method_rename",
+    "severity": "breaking",
+    "description": "In PayFlow SDK v2.0, the deprecated 'client.charge.create(...)' method was removed and unified under 'client.payments.create(...)'.",
+    "v1_pattern": "client.charge.create(*args, **kwargs)",
+    "v2_pattern": "client.payments.create(*args, **kwargs)",
+    "ast_match_criteria": {
+      "target_attributes": ["charge.create"],
+      "callee_chain": ["charge", "create"]
+    },
+    "code_example_before": "charge = client.charge.create(amount_cents=5000, customer=\"cus_123\")",
+    "code_example_after": "payment = client.payments.create(amount=5000, currency=\"USD\", customer=\"cus_123\")",
+    "fix_strategy": "Change attribute access from 'charge.create' to 'payments.create'. Ensure arguments conform to PF-002 if 'amount_cents' is present."
+  },
+  {
+    "id": "PF-002",
+    "name": "Payment Argument Rename & Currency Enforcement",
+    "category": "args_change",
+    "severity": "breaking",
+    "description": "In PayFlow SDK v2.0, 'amount_cents' is renamed to 'amount'. Additionally, 'currency' is now a mandatory parameter (standard default is 'USD' if omitted in v1).",
+    "v1_pattern": "amount_cents=<val>",
+    "v2_pattern": "amount=<val>, currency=\"USD\"",
+    "ast_match_criteria": {
+      "target_kwargs": ["amount_cents"],
+      "missing_kwargs": ["currency"]
+    },
+    "code_example_before": "client.payments.create(amount_cents=2500)",
+    "code_example_after": "client.payments.create(amount=2500, currency=\"USD\")",
+    "fix_strategy": "Rename 'amount_cents' keyword argument to 'amount'. If 'currency' keyword is missing, add currency=\"USD\"."
+  },
+  {
+    "id": "PF-003",
+    "name": "Exception Hierarchy Modernization",
+    "category": "exception",
+    "severity": "breaking",
+    "description": "PayFlow v2 replaced the legacy 'PayFlowError' base exception with 'PayFlowAPIException'. Catching or raising 'PayFlowError' will miss runtime errors or fail syntax in v2.",
+    "v1_pattern": "except PayFlowError as e:",
+    "v2_pattern": "except PayFlowAPIException as e:",
+    "ast_match_criteria": {
+      "target_exception_names": ["PayFlowError"],
+      "target_import_names": ["PayFlowError"]
+    },
+    "code_example_before": "from payflow.exceptions import PayFlowError\ntry:\n    ...\nexcept PayFlowError as err:\n    logger.error(err)",
+    "code_example_after": "from payflow.exceptions import PayFlowAPIException\ntry:\n    ...\nexcept PayFlowAPIException as err:\n    logger.error(err)",
+    "fix_strategy": "Replace imports and except handlers referencing 'PayFlowError' with 'PayFlowAPIException'."
+  },
+  {
+    "id": "PF-004",
+    "name": "Client Initialization Config Object Overhaul",
+    "category": "client_init",
+    "severity": "breaking",
+    "description": "PayFlowClient in v2 no longer accepts direct keyword arguments like 'apiKey' or 'api_key'. It strictly requires a 'ClientConfig' configuration object instance passed to 'config'.",
+    "v1_pattern": "PayFlowClient(apiKey=\"...\") or PayFlowClient(api_key=\"...\")",
+    "v2_pattern": "PayFlowClient(config=ClientConfig(api_key=\"...\"))",
+    "ast_match_criteria": {
+      "target_class": "PayFlowClient",
+      "target_kwargs": ["apiKey", "api_key"],
+      "prohibited_kwargs": ["apiKey"]
+    },
+    "code_example_before": "client = PayFlowClient(apiKey=\"pk_live_12345\")",
+    "code_example_after": "from payflow.config import ClientConfig\nclient = PayFlowClient(config=ClientConfig(api_key=\"pk_live_12345\"))",
+    "fix_strategy": "Import 'ClientConfig' from 'payflow.config' (or 'payflow.client') if not imported. Wrap the api key in 'ClientConfig(api_key=...)' passed as 'config' argument."
+  },
+  {
+    "id": "PF-005",
+    "name": "Customer Retrieval Method & Parameter Standardization",
+    "category": "customer_api",
+    "severity": "breaking",
+    "description": "PayFlow v2 deprecated 'client.customers.retrieve(id=...)' in favor of 'client.customers.get(customer_id=...)'.",
+    "v1_pattern": "client.customers.retrieve(id=<val>)",
+    "v2_pattern": "client.customers.get(customer_id=<val>)",
+    "ast_match_criteria": {
+      "target_attributes": ["customers.retrieve"],
+      "target_kwargs": ["id"]
+    },
+    "code_example_before": "cust = client.customers.retrieve(id=\"cus_99\")",
+    "code_example_after": "cust = client.customers.get(customer_id=\"cus_99\")",
+    "fix_strategy": "Rename method 'retrieve' to 'get' on customers service, and rename parameter 'id' to 'customer_id'."
+  },
+  {
+    "id": "PF-006",
+    "name": "Refund Method Deprecation",
+    "category": "refund",
+    "severity": "breaking",
+    "description": "PayFlow v2 replaced singular 'client.refund.process(charge_id=...)' with plural service 'client.refunds.issue(payment_id=...)'.",
+    "v1_pattern": "client.refund.process(charge_id=<val>)",
+    "v2_pattern": "client.refunds.issue(payment_id=<val>)",
+    "ast_match_criteria": {
+      "target_attributes": ["refund.process"],
+      "target_kwargs": ["charge_id"]
+    },
+    "code_example_before": "client.refund.process(charge_id=\"ch_123\", amount=1000)",
+    "code_example_after": "client.refunds.issue(payment_id=\"ch_123\", amount=1000)",
+    "fix_strategy": "Change 'client.refund.process' to 'client.refunds.issue' and rename 'charge_id' parameter to 'payment_id'."
+  }
+]
